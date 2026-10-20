@@ -1,0 +1,16 @@
+
+# Gradle
+.gradle/
+build/
+
+# Kotlin / native build output
+.kotlin/
+.cxx/
+
+# Local Android SDK configuration
+local.properties
+
+# Signing keys
+*.jks
+*.keystore
+debug.keystore
