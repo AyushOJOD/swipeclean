@@ -56,6 +56,8 @@ type SavedSession = {
   index: number;
   decisions: Record<string, Decision>;
   history: HistoryEntry[];
+  // Persist queued media IDs separately from swipe decisions so pending deletions survive restarts.
+  queuedPhotoIds?: string[];
 };
 
 const SESSION_FILE = `${FileSystem.documentDirectory ?? ""}swipeclean-session.json`;
@@ -109,6 +111,9 @@ export default function HomeScreen() {
   const [queueVisible, setQueueVisible] = useState(false);
   const [previewedPhoto, setPreviewedPhoto] = useState<Photo | null>(null);
   const [deletingPhotos, setDeletingPhotos] = useState(false);
+  const [unavailablePhotoIds, setUnavailablePhotoIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
   const [sessionChoiceRequired, setSessionChoiceRequired] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
@@ -209,7 +214,9 @@ export default function HomeScreen() {
                 Boolean(
                   parsed.photoIds.length &&
                   (parsed.index > 0 ||
-                    Object.keys(parsed.decisions).length > 0),
+                    Object.keys(parsed.decisions).length > 0 ||
+                    (Array.isArray(parsed.queuedPhotoIds) &&
+                      parsed.queuedPhotoIds.length > 0)),
                 ),
               );
             }
@@ -330,6 +337,7 @@ export default function HomeScreen() {
       index,
       decisions,
       history,
+      queuedPhotoIds: queuedPhotos.map((photo) => photo.id),
     };
 
     void FileSystem.writeAsStringAsync(
@@ -345,6 +353,7 @@ export default function HomeScreen() {
     index,
     decisions,
     history,
+    queuedPhotos,
     selectedAlbum,
     targetCount,
   ]);
@@ -391,6 +400,8 @@ export default function HomeScreen() {
         : Math.min(savedSession.index, loadedPhotos.length);
     setDecisions(restoredDecisions);
     setHistory(restoredHistory);
+    const queuedIds = new Set(savedSession.queuedPhotoIds ?? []);
+    setQueuedPhotos(loadedPhotos.filter((photo) => queuedIds.has(photo.id)));
     setIndex(Math.min(restoredIndex, loadedPhotos.length));
     setSessionChoiceRequired(false);
     setSavedSession(null);
@@ -501,6 +512,61 @@ export default function HomeScreen() {
   const rejectStyle = useAnimatedStyle(() => ({
     opacity: Math.min(Math.max(-translateX.value / 100, 0), 1),
   }));
+
+  // Mark an asset whose URI no longer loads. The user can then skip it
+  // without leaving a black card or corrupting the review indices.
+  const handlePhotoUnavailable = useCallback((photoId: string) => {
+    setUnavailablePhotoIds((previous) => {
+      if (previous.has(photoId)) return previous;
+      const next = new Set(previous);
+      next.add(photoId);
+      return next;
+    });
+  }, []);
+
+  const skipUnavailablePhoto = useCallback(
+    (photoId: string) => {
+      const oldPhotos = photos;
+      const missingIndex = oldPhotos.findIndex((photo) => photo.id === photoId);
+      if (missingIndex < 0) return;
+
+      const remainingPhotos = oldPhotos.filter((photo) => photo.id !== photoId);
+      const newIndexById = new Map(
+        remainingPhotos.map((photo, newIndex) => [photo.id, newIndex]),
+      );
+
+      setPhotos(remainingPhotos);
+      setQueuedPhotos((previous) =>
+        previous.filter((photo) => photo.id !== photoId),
+      );
+      setDecisions((previous) => {
+        const next = { ...previous };
+        delete next[photoId];
+        return next;
+      });
+      setHistory((previous) =>
+        previous.flatMap((entry) => {
+          const oldPhoto = oldPhotos[entry.index];
+          if (!oldPhoto || oldPhoto.id === photoId) return [];
+          const newIndex = newIndexById.get(oldPhoto.id);
+          return newIndex === undefined ? [] : [{ ...entry, index: newIndex }];
+        }),
+      );
+      setIndex((previous) =>
+        previous > missingIndex ? previous - 1 : previous,
+      );
+      setPreviewVisible(false);
+      setPreviewedPhoto(null);
+      setUnavailablePhotoIds((previous) => {
+        const next = new Set(previous);
+        next.delete(photoId);
+        return next;
+      });
+      translateX.value = 0;
+      translateY.value = 0;
+    },
+    [photos, translateX, translateY],
+  );
 
   const undo = () => {
     const last = history[history.length - 1];
@@ -997,18 +1063,38 @@ export default function HomeScreen() {
         ) : currentPhoto ? (
           <GestureDetector gesture={cardGesture}>
             <Animated.View style={[styles.card, cardStyle]}>
-              <Image
-                key={currentPhoto.id}
-                source={{
-                  uri:
-                    currentPhoto.mediaType === "video"
-                      ? (currentPhoto.thumbnailUri ?? currentPhoto.uri)
-                      : currentPhoto.uri,
-                }}
-                style={styles.photo}
-                resizeMode="cover"
-              />
-              {currentPhoto.mediaType === "video" ? (
+              {unavailablePhotoIds.has(currentPhoto.id) ? (
+                <View style={styles.unavailableOverlay}>
+                  <Text style={styles.unavailableTitle}>Photo unavailable</Text>
+                  <Text style={styles.unavailableMessage}>
+                    This item may have been deleted or moved outside SwipeClean.
+                  </Text>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    style={styles.unavailableSkipButton}
+                    onPress={() => skipUnavailablePhoto(currentPhoto.id)}
+                  >
+                    <Text style={styles.unavailableSkipButtonText}>
+                      Skip unavailable item
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Image
+                  key={currentPhoto.id}
+                  source={{
+                    uri:
+                      currentPhoto.mediaType === "video"
+                        ? (currentPhoto.thumbnailUri ?? currentPhoto.uri)
+                        : currentPhoto.uri,
+                  }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                  onError={() => handlePhotoUnavailable(currentPhoto.id)}
+                />
+              )}
+              {!unavailablePhotoIds.has(currentPhoto.id) &&
+              currentPhoto.mediaType === "video" ? (
                 <View pointerEvents="none" style={styles.videoCenterBadge}>
                   <Text style={styles.videoPlayIcon}>▶</Text>
                   <Text style={styles.videoDuration}>
@@ -1253,6 +1339,11 @@ export default function HomeScreen() {
                 source={{ uri: photoInPreview.uri }}
                 style={styles.previewImage}
                 resizeMode="contain"
+                onError={() => {
+                  handlePhotoUnavailable(photoInPreview.id);
+                  setPreviewVisible(false);
+                  setPreviewedPhoto(null);
+                }}
               />
             )
           ) : null}
@@ -1433,6 +1524,41 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     borderWidth: 1,
     borderColor: "#393247",
+  },
+  unavailableOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    backgroundColor: "#17171F",
+    borderRadius: 24,
+  },
+  unavailableTitle: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  unavailableMessage: {
+    color: "#B8B6C8",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  unavailableSkipButton: {
+    backgroundColor: "#A78BFA",
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  unavailableSkipButtonText: {
+    color: "#171321",
+    fontSize: 14,
+    fontWeight: "800",
   },
   photo: {
     ...StyleSheet.absoluteFill,
