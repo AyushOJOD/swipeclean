@@ -7,6 +7,7 @@ import FinishedScreen from "../components/FinishedScreen";
 import MediaCard from "../components/MediaCard";
 import SavedSessionPrompt from "../components/SavedSessionPrompt";
 
+import loadGalleryAlbums from "../hooks/useLoadGallery";
 import useResumeSavedSession from "../hooks/useResumeSavedSession";
 import useSavedSession from "../hooks/useSavedSession";
 
@@ -80,59 +81,17 @@ export default function HomeScreen() {
     setLoading(true);
     setGalleryError(null);
     try {
-      const permission = await MediaLibrary.requestPermissionsAsync(false, [
-        "photo",
-        "video",
-      ]);
-      if (!permission.granted) {
+      const { albums: mappedAlbums, permissionGranted } =
+        await loadGalleryAlbums();
+
+      if (!permissionGranted) {
         setPermissionDenied(true);
         setPhotos([]);
         setAlbums([]);
         return;
       }
+
       setPermissionDenied(false);
-      const albumResults = await MediaLibrary.getAlbumsAsync({
-        includeSmartAlbums: true,
-      });
-
-      // Keep only albums that actually contain photos or videos.
-      const checkedAlbums = await Promise.all(
-        albumResults
-          .filter((album) => album.assetCount > 0)
-          .map(async (album): Promise<GalleryAlbum | null> => {
-            try {
-              const result = await MediaLibrary.getAssetsAsync({
-                album: album.id,
-                mediaType: [
-                  MediaLibrary.MediaType.photo,
-                  MediaLibrary.MediaType.video,
-                ],
-                first: 1,
-              });
-
-              if (result.assets.length === 0) {
-                return null;
-              }
-
-              return {
-                id: album.id,
-                title: album.title,
-                assetCount: album.assetCount,
-              };
-            } catch (error) {
-              console.warn(
-                `Couldn't verify media in album "${album.title}":`,
-                error,
-              );
-              return null;
-            }
-          }),
-      );
-
-      const mappedAlbums = checkedAlbums
-        .filter((album): album is GalleryAlbum => album !== null)
-        .sort((a, b) => a.title.localeCompare(b.title));
-
       setAlbums(mappedAlbums);
       setPhotos([]);
       setSelectedAlbum(null);
