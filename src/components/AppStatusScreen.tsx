@@ -1,4 +1,10 @@
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import styles from "../styles/styles";
 
@@ -35,14 +41,25 @@ export default function AppStatusScreen({
       <View style={styles.finishedCard}>
         <Text style={styles.finishedTitle}>Media access needed</Text>
         <Text style={styles.finishedSubtitle}>
-          Allow access to your media to start reviewing your gallery.
+          Allow access to your media to start reviewing your gallery. If Android
+          doesn't show the permission prompt, open Settings and allow access
+          manually.
         </Text>
+
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={onRetry}
           accessibilityRole="button"
         >
           <Text style={styles.primaryButtonText}>Try again</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => void Linking.openSettings()}
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryButtonText}>Open Settings</Text>
         </TouchableOpacity>
       </View>
     );
