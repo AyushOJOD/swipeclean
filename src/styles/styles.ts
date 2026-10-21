@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 18,
+    marginBottom: 14,
   },
   brand: {
     color: "#FFFFFF",
@@ -27,13 +27,13 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#9B9AAF",
     fontSize: 13,
-    marginTop: 5,
+    marginTop: 4,
     letterSpacing: 0.15,
   },
   counter: {
     backgroundColor: "#211B32",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#40345D",
@@ -44,9 +44,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   progressTrack: {
-    height: 4,
+    height: 5,
     backgroundColor: "#282435",
-    borderRadius: 4,
+    borderRadius: 5,
     overflow: "hidden",
   },
   progressFill: {
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   cardArea: {
     flex: 1,
     justifyContent: "center",
-    paddingVertical: 18,
+    paddingVertical: 12,
   },
   card: {
     width: "100%",
@@ -271,37 +271,38 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
-    paddingTop: 60,
+    padding: 20,
+    paddingTop: 52,
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   photoTitle: {
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "800",
   },
   photoSubtitle: {
     color: "#E0E0E0",
     fontSize: 13,
-    marginTop: 7,
+    marginTop: 6,
   },
   hint: {
     textAlign: "center",
     color: "#8D93A2",
     fontSize: 13,
-    marginBottom: 18,
+    marginBottom: 14,
   },
+
   actions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 28,
-    paddingBottom: 22,
+    gap: 24,
+    paddingBottom: 16,
   },
   actionButton: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#1B1925",
@@ -381,7 +382,8 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     marginTop: 10,
-    paddingVertical: 14,
+    minHeight: 48,
+    paddingVertical: 13,
     paddingHorizontal: 20,
     borderRadius: 14,
     borderWidth: 1,
@@ -395,10 +397,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   primaryButton: {
+    minHeight: 48,
     backgroundColor: "#B7A4FF",
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 25,
+    borderRadius: 15,
+    paddingVertical: 13,
+    paddingHorizontal: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
   primaryButtonText: {
     color: "#171020",
@@ -590,6 +595,38 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 12,
     marginTop: 12,
+  },
+  albumNavigation: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+
+  albumBackButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#171720",
+    borderWidth: 1,
+    borderColor: "#30303D",
+  },
+
+  albumBackIcon: {
+    color: "#B7A4FF",
+    fontSize: 32,
+    lineHeight: 36,
+    marginTop: -3,
+  },
+
+  albumNavigationTitle: {
+    flex: 1,
+    color: "#F4F0FF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

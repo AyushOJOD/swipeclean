@@ -592,22 +592,6 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          {!albumPickerVisible && photos.length > 0 && !finished && (
-            <TouchableOpacity
-              accessibilityLabel="Choose another folder"
-              style={styles.queueButton}
-              onPress={() => {
-                setAlbumPickerVisible(true);
-                setPhotos([]);
-                setIndex(0);
-                setDecisions({});
-                setHistory([]);
-                setSessionReady(false);
-              }}
-            >
-              <Text style={styles.queueButtonText}>← Folders</Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             accessibilityLabel="Open deletion queue"
             style={styles.queueButton}
@@ -635,6 +619,30 @@ export default function HomeScreen() {
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
+
+      {!albumPickerVisible && selectedAlbum && !loading && !finished && (
+        <View style={styles.albumNavigation}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Choose another folder"
+            style={styles.albumBackButton}
+            onPress={() => {
+              setAlbumPickerVisible(true);
+              setPhotos([]);
+              setIndex(0);
+              setDecisions({});
+              setHistory([]);
+              setSessionReady(false);
+            }}
+          >
+            <Text style={styles.albumBackIcon}>‹</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.albumNavigationTitle} numberOfLines={1}>
+            {selectedAlbum.title}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.cardArea}>
         {loading ? (
@@ -719,7 +727,7 @@ export default function HomeScreen() {
 
       {showSwipeControls && (
         <>
-          <Text style={styles.hint}>Swipe right to keep · Left to reject</Text>
+          <Text style={styles.hint}>Swipe Left to reject · right to keep</Text>
 
           <View style={styles.actions}>
             <TouchableOpacity
