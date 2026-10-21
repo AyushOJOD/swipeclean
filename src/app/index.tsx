@@ -2,14 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
+import AlbumPicker from "../components/AlbumPicker";
 import MediaCard from "../components/MediaCard";
 
 import DeletionQueueModal from "@/components/DeletionQueueModal";
@@ -772,120 +771,25 @@ export default function HomeScreen() {
             <Text style={styles.primaryButtonText}>Tap to retry</Text>
           </TouchableOpacity>
         ) : albumPickerVisible && !(sessionChoiceRequired && savedSession) ? (
-          <ScrollView contentContainerStyle={styles.pickerContainer}>
-            <Text style={styles.finishedEmoji}>🗂️</Text>
-            <Text style={styles.pickerEyebrow}>YOUR GALLERY</Text>
-            <Text style={styles.finishedTitle}>Choose a folder</Text>
-            <Text style={styles.finishedSubtitle}>
-              Pick an album, then choose how many items to review. You can
-              select up to the number available in that album.
-            </Text>
-            {albums.map((album) => {
-              const isExpanded = selectedAlbum?.id === album.id;
-              return (
-                <View key={album.id} style={styles.albumAccordion}>
-                  <TouchableOpacity
-                    style={[
-                      styles.albumOption,
-                      isExpanded && styles.albumOptionSelected,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: isExpanded }}
-                    onPress={() => {
-                      if (isExpanded) {
-                        setSelectedAlbum(null);
-                      } else {
-                        setSelectedAlbum(album);
-                        setPhotoCountInput(
-                          String(Math.min(50, album.assetCount)),
-                        );
-                      }
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.albumTitle}>{album.title}</Text>
-                      <Text style={styles.albumCount}>
-                        {album.assetCount} items
-                      </Text>
-                    </View>
-                    <Text style={styles.albumSelectMark}>
-                      {isExpanded ? "⌃" : "⌄"}
-                    </Text>
-                  </TouchableOpacity>
-                  {isExpanded ? (
-                    <View style={styles.countPanel}>
-                      <Text style={styles.albumTitle}>How many items?</Text>
-                      <Text style={styles.albumCount}>
-                        Available in {album.title}: {album.assetCount}
-                      </Text>
-                      <View style={styles.countChips}>
-                        {[25, 50, 100]
-                          .filter((n) => n <= album.assetCount)
-                          .map((n) => (
-                            <TouchableOpacity
-                              key={n}
-                              style={[
-                                styles.countChip,
-                                Number(photoCountInput) === n &&
-                                  styles.countChipSelected,
-                              ]}
-                              onPress={() => setPhotoCountInput(String(n))}
-                            >
-                              <Text style={styles.countChipText}>{n}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        <TouchableOpacity
-                          style={[
-                            styles.countChip,
-                            Number(photoCountInput) === album.assetCount &&
-                              styles.countChipSelected,
-                          ]}
-                          onPress={() =>
-                            setPhotoCountInput(String(album.assetCount))
-                          }
-                        >
-                          <Text style={styles.countChipText}>
-                            All ({album.assetCount})
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      <TextInput
-                        value={photoCountInput}
-                        onChangeText={(value) =>
-                          setPhotoCountInput(value.replace(/[^0-9]/g, ""))
-                        }
-                        keyboardType="number-pad"
-                        placeholder="Enter number"
-                        placeholderTextColor="#8D93A2"
-                        style={styles.countInput}
-                      />
-                      <Text style={styles.albumCount}>
-                        Choose 1–{album.assetCount} items.
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.primaryButton}
-                        disabled={
-                          !photoCountInput ||
-                          Number(photoCountInput) < 1 ||
-                          Number(photoCountInput) > album.assetCount
-                        }
-                        onPress={() =>
-                          void startAlbumReview(
-                            album,
-                            Number(photoCountInput),
-                          ).then(() => setSessionReady(true))
-                        }
-                      >
-                        <Text style={styles.primaryButtonText}>
-                          Start reviewing
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                </View>
+          <AlbumPicker
+            albums={albums}
+            selectedAlbum={selectedAlbum}
+            photoCountInput={photoCountInput}
+            onSelectAlbum={(album) => {
+              if (selectedAlbum?.id === album.id) {
+                setSelectedAlbum(null);
+              } else {
+                setSelectedAlbum(album);
+                setPhotoCountInput(String(Math.min(50, album.assetCount)));
+              }
+            }}
+            onChangePhotoCount={setPhotoCountInput}
+            onStartReview={(album, count) => {
+              void startAlbumReview(album, count).then(() =>
+                setSessionReady(true),
               );
-            })}
-          </ScrollView>
+            }}
+          />
         ) : sessionChoiceRequired && savedSession ? (
           <View style={styles.finishedCard}>
             <Text style={styles.finishedEmoji}>👋</Text>
