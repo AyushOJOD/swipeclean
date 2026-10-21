@@ -5,11 +5,13 @@ import {
   StatusBar,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import AlbumPicker from "../components/AlbumPicker";
+import FinishedScreen from "../components/FinishedScreen";
 import MediaCard from "../components/MediaCard";
+import SavedSessionPrompt from "../components/SavedSessionPrompt";
 
 import DeletionQueueModal from "@/components/DeletionQueueModal";
 import MediaPreviewModal from "@/components/MediaPreviewModal";
@@ -791,42 +793,16 @@ export default function HomeScreen() {
             }}
           />
         ) : sessionChoiceRequired && savedSession ? (
-          <View style={styles.finishedCard}>
-            <Text style={styles.finishedEmoji}>👋</Text>
-            <Text style={styles.finishedTitle}>Welcome back</Text>
-            <Text style={styles.finishedSubtitle}>
-              You have a saved review session. Continue where you left off, or
-              start a fresh review.
-            </Text>
-            <View style={styles.statsRow}>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{savedSession.index}</Text>
-                <Text style={styles.statLabel}>Reviewed</Text>
-              </View>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>
-                  {
-                    Object.values(savedSession.decisions).filter(
-                      (decision) => decision === "rejected",
-                    ).length
-                  }
-                </Text>
-                <Text style={styles.statLabel}>In queue</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={resumeSavedSession}
-            >
-              <Text style={styles.primaryButtonText}>Resume review</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={startFreshSession}
-            >
-              <Text style={styles.secondaryButtonText}>Start fresh</Text>
-            </TouchableOpacity>
-          </View>
+          <SavedSessionPrompt
+            reviewedCount={savedSession.index}
+            queuedCount={
+              Object.values(savedSession.decisions).filter(
+                (decision) => decision === "rejected",
+              ).length
+            }
+            onResume={() => void resumeSavedSession()}
+            onStartFresh={startFreshSession}
+          />
         ) : photos.length === 0 ? (
           <View style={styles.finishedCard}>
             <Text style={styles.finishedEmoji}>📷</Text>
@@ -843,73 +819,24 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         ) : finished ? (
-          <View style={styles.finishedCard}>
-            <Text style={styles.finishedEmoji}>✨</Text>
-            <Text style={styles.finishedTitle}>Nice work!</Text>
-            <Text style={styles.finishedSubtitle}>
-              You've reviewed all {photos.length} selected items from{" "}
-              {selectedAlbum?.title ?? "this folder"}.
-            </Text>
-
-            <View style={styles.statsRow}>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>
-                  {keptCount + rejectedCount}
-                </Text>
-                <Text style={styles.statLabel}>Reviewed</Text>
-              </View>
-
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{keptCount}</Text>
-                <Text style={styles.statLabel}>Kept</Text>
-              </View>
-
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{rejectedCount}</Text>
-                <Text style={styles.statLabel}>Marked for deletion</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => {
-                setAlbumPickerVisible(true);
-                setPhotos([]);
-                setIndex(0);
-                setDecisions({});
-                setHistory([]);
-                setSessionReady(false);
-              }}
-            >
-              <Text style={styles.primaryButtonText}>
-                Choose another folder
-              </Text>
-            </TouchableOpacity>
-
-            {/* Delete items marked during this review */}
-            {rejectedPhotos.length > 0 && (
-              <TouchableOpacity
-                style={styles.queueButton}
-                onPress={confirmDeleteQueue}
-                disabled={deletingPhotos}
-              >
-                <Text style={styles.queueButtonText}>
-                  {deletingPhotos
-                    ? "Deleting..."
-                    : `Delete selected items (${rejectedPhotos.length})`}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={resetSession}
-            >
-              <Text style={styles.secondaryButtonText}>
-                Review this selection again
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <FinishedScreen
+            selectedCount={photos.length}
+            albumTitle={selectedAlbum?.title ?? "this folder"}
+            reviewedCount={keptCount + rejectedCount}
+            keptCount={keptCount}
+            rejectedCount={rejectedPhotos.length}
+            deletingPhotos={deletingPhotos}
+            onChooseAnotherFolder={() => {
+              setAlbumPickerVisible(true);
+              setPhotos([]);
+              setIndex(0);
+              setDecisions({});
+              setHistory([]);
+              setSessionReady(false);
+            }}
+            onDeleteSelected={confirmDeleteQueue}
+            onReviewAgain={resetSession}
+          />
         ) : currentPhoto ? (
           <GestureDetector gesture={cardGesture}>
             <MediaCard
