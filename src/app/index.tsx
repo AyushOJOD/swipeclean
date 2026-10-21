@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   StatusBar,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 import AlbumPicker from "../components/AlbumPicker";
+import AppStatusScreen from "../components/AppStatusScreen";
 import FinishedScreen from "../components/FinishedScreen";
 import MediaCard from "../components/MediaCard";
 import SavedSessionPrompt from "../components/SavedSessionPrompt";
@@ -737,41 +737,18 @@ export default function HomeScreen() {
 
       <View style={styles.cardArea}>
         {loading ? (
-          <View style={styles.loadingState}>
-            <View style={styles.loadingMark}>
-              <ActivityIndicator size="large" color="#B8A5FF" />
-            </View>
-            <Text style={styles.loadingTitle}>Getting things ready</Text>
-            <Text style={styles.loadingSubtitle}>
-              Finding your media and albums…
-            </Text>
-            <View style={styles.loadingTrack}>
-              <View style={styles.loadingTrackFill} />
-            </View>
-          </View>
+          <AppStatusScreen type="loading" />
         ) : permissionDenied ? (
-          <View style={styles.finishedCard}>
-            <Text style={styles.finishedTitle}>Media access needed</Text>
-            <Text style={styles.finishedSubtitle}>
-              Allow access to your media to start reviewing your gallery.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => void loadGallery()}
-            >
-              <Text style={styles.primaryButtonText}>Try again</Text>
-            </TouchableOpacity>
-          </View>
+          <AppStatusScreen
+            type="permission-denied"
+            onRetry={() => void loadGallery()}
+          />
         ) : galleryError ? (
-          <TouchableOpacity
-            style={styles.finishedCard}
-            onPress={() => void loadGallery()}
-          >
-            <Text style={styles.finishedTitle}>Couldn't load media</Text>
-            <Text style={styles.finishedSubtitle}>{galleryError}</Text>
-            <Text style={styles.primaryButtonText}>Tap to retry</Text>
-          </TouchableOpacity>
+          <AppStatusScreen
+            type="gallery-error"
+            message={galleryError}
+            onRetry={() => void loadGallery()}
+          />
         ) : albumPickerVisible && !(sessionChoiceRequired && savedSession) ? (
           <AlbumPicker
             albums={albums}
@@ -804,20 +781,7 @@ export default function HomeScreen() {
             onStartFresh={startFreshSession}
           />
         ) : photos.length === 0 ? (
-          <View style={styles.finishedCard}>
-            <Text style={styles.finishedEmoji}>📷</Text>
-            <Text style={styles.finishedTitle}>No media found</Text>
-            <Text style={styles.finishedSubtitle}>
-              Add media to your device or check your gallery permissions.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => void loadGallery()}
-            >
-              <Text style={styles.primaryButtonText}>Reload gallery</Text>
-            </TouchableOpacity>
-          </View>
+          <AppStatusScreen type="no-media" onRetry={() => void loadGallery()} />
         ) : finished ? (
           <FinishedScreen
             selectedCount={photos.length}
