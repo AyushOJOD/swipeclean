@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  View
-} from "react-native";
+import { Alert, StatusBar, Text, TouchableOpacity, View } from "react-native";
 
 import AlbumPicker from "../components/AlbumPicker";
 import AppStatusScreen from "../components/AppStatusScreen";
 import FinishedScreen from "../components/FinishedScreen";
 import MediaCard from "../components/MediaCard";
 import SavedSessionPrompt from "../components/SavedSessionPrompt";
+import useSavedSession from "../hooks/useSavedSession";
 
 import DeletionQueueModal from "@/components/DeletionQueueModal";
 import MediaPreviewModal from "@/components/MediaPreviewModal";
@@ -273,27 +268,7 @@ export default function HomeScreen() {
     void loadGallery();
   }, [loadGallery]);
 
-  useEffect(() => {
-    if (!sessionReady || loading || !FileSystem.documentDirectory) return;
-
-    const session: SavedSession = {
-      albumId: selectedAlbum?.id,
-      albumTitle: selectedAlbum?.title,
-      targetCount,
-      photoIds: photos.map((photo) => photo.id),
-      index,
-      decisions,
-      history,
-      queuedPhotoIds: queuedPhotos.map((photo) => photo.id),
-    };
-
-    void FileSystem.writeAsStringAsync(
-      SESSION_FILE,
-      JSON.stringify(session),
-    ).catch((error) =>
-      console.warn("Couldn't save SwipeClean progress:", error),
-    );
-  }, [
+  useSavedSession({
     sessionReady,
     loading,
     photos,
@@ -301,9 +276,10 @@ export default function HomeScreen() {
     decisions,
     history,
     queuedPhotos,
-    selectedAlbum,
+    selectedAlbumId: selectedAlbum?.id,
+    selectedAlbumTitle: selectedAlbum?.title,
     targetCount,
-  ]);
+  });
 
   const resumeSavedSession = async () => {
     if (!savedSession) return;
