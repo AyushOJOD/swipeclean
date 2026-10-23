@@ -53,21 +53,23 @@ export default function FinishedScreen({
       </View>
 
       <TouchableOpacity
-        style={styles.primaryButton}
+        style={styles.finishedPrimaryButton}
         onPress={onChooseAnotherFolder}
         accessibilityRole="button"
       >
-        <Text style={styles.primaryButtonText}>Choose another folder</Text>
+        <Text style={styles.finishedPrimaryButtonText}>
+          Choose another folder
+        </Text>
       </TouchableOpacity>
 
       {rejectedCount > 0 && (
         <TouchableOpacity
-          style={styles.queueButton}
+          style={styles.finishedDeleteButton}
           onPress={onDeleteSelected}
           disabled={deletingPhotos}
           accessibilityRole="button"
         >
-          <Text style={styles.queueButtonText}>
+          <Text style={styles.finishedDeleteButtonText}>
             {deletingPhotos
               ? "Deleting..."
               : `Delete selected items (${rejectedCount})`}
@@ -76,11 +78,11 @@ export default function FinishedScreen({
       )}
 
       <TouchableOpacity
-        style={styles.secondaryButton}
+        style={styles.finishedSecondaryButton}
         onPress={onReviewAgain}
         accessibilityRole="button"
       >
-        <Text style={styles.secondaryButtonText}>
+        <Text style={styles.finishedSecondaryButtonText}>
           Review this selection again
         </Text>
       </TouchableOpacity>

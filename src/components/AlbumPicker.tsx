@@ -1,9 +1,9 @@
 import {
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import styles from "../styles/styles";
@@ -16,6 +16,7 @@ type AlbumPickerProps = {
   onSelectAlbum: (album: GalleryAlbum) => void;
   onChangePhotoCount: (value: string) => void;
   onStartReview: (album: GalleryAlbum, count: number) => void;
+  onHowToUse: () => void;
 };
 
 export default function AlbumPicker({
@@ -25,10 +26,45 @@ export default function AlbumPicker({
   onSelectAlbum,
   onChangePhotoCount,
   onStartReview,
+  onHowToUse,
 }: AlbumPickerProps) {
   return (
     <ScrollView contentContainerStyle={styles.pickerContainer}>
-      <Text style={styles.finishedEmoji}>🗂️</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16,
+          marginBottom: 8,
+        }}
+      >
+        <Text style={styles.finishedEmoji}>🗂️</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="How to use SwipeClean"
+          onPress={onHowToUse}
+          style={{
+            borderWidth: 1,
+            borderColor: "#3B4740",
+            backgroundColor: "#252A27",
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+          }}
+        >
+          <Text
+            style={{
+              color: "#A3BFA8",
+              fontSize: 14,
+              fontWeight: "600",
+            }}
+          >
+            How to use
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.pickerEyebrow}>YOUR GALLERY</Text>
       <Text style={styles.finishedTitle}>Choose a folder</Text>
       <Text style={styles.finishedSubtitle}>

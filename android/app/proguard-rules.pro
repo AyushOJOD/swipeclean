@@ -7,8 +7,19 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# react-native-reanimated
--keep class com.swmansion.reanimated.** { *; }
+# React Native & TurboModules
 -keep class com.facebook.react.turbomodule.** { *; }
+-keep class com.facebook.react.bridge.** { *; }
 
-# Add any project specific keep options here:
+# React Native Reanimated
+-keep class com.swmansion.reanimated.** { *; }
+
+# React Native Gesture Handler
+-keep class com.swmansion.gesturehandler.** { *; }
+
+# React Native Screens
+-keep class com.swmansion.rnscreens.** { *; }
+
+# React Native Async Storage
+-keep class com.reactnativecommunity.asyncstorage.** { *; }
+

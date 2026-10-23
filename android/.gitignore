@@ -1,16 +1,19 @@
+# OSX
+#
+.DS_Store
 
-# Gradle
-.gradle/
+# Android/IntelliJ
+#
 build/
-
-# Kotlin / native build output
-.kotlin/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
 .cxx/
 
-# Local Android SDK configuration
-local.properties
+# generated inline modules
+app/src/main/java/inline/
 
-# Signing keys
-*.jks
-*.keystore
-debug.keystore
+# Bundle artifacts
+*.jsbundle

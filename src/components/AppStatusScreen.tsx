@@ -47,7 +47,7 @@ export default function AppStatusScreen({
         </Text>
 
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, { marginBottom: 12 }]}
           onPress={onRetry}
           accessibilityRole="button"
         >

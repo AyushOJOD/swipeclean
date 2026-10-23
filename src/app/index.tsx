@@ -11,8 +11,10 @@ import loadGalleryAlbums from "../hooks/useLoadGallery";
 import useResumeSavedSession from "../hooks/useResumeSavedSession";
 import useSavedSession from "../hooks/useSavedSession";
 
+
 import DeletionQueueModal from "@/components/DeletionQueueModal";
 import MediaPreviewModal from "@/components/MediaPreviewModal";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library/legacy";
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -30,10 +32,16 @@ import type { Decision, Direction, GalleryAlbum, Photo } from "../types/media";
 import type { HistoryEntry, SavedSession } from "../types/session";
 
 const SESSION_FILE = `${FileSystem.documentDirectory ?? ""}swipeclean-session.json`;
+const HAS_SEEN_ONBOARDING_KEY = "@swipeclean_has_seen_onboarding";
 
 const SWIPE_THRESHOLD = 110;
 
+
 export default function HomeScreen() {
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingFromFolders, setOnboardingFromFolders] = useState(false);
   const [index, setIndex] = useState(0);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -44,11 +52,11 @@ export default function HomeScreen() {
   const [photoCountInput, setPhotoCountInput] = useState("50");
   const [targetCount, setTargetCount] = useState(0);
   const [albumPickerVisible, setAlbumPickerVisible] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [endCursor, setEndCursor] = useState<string | null>(null);
+  const [_hasNextPage, setHasNextPage] = useState(false);
+  const [_endCursor, setEndCursor] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [galleryError, setGalleryError] = useState<string | null>(null);
@@ -62,7 +70,6 @@ export default function HomeScreen() {
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
   const [sessionChoiceRequired, setSessionChoiceRequired] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
@@ -135,6 +142,54 @@ export default function HomeScreen() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkFirstLaunch() {
+      try {
+        const hasSeen = await AsyncStorage.getItem(HAS_SEEN_ONBOARDING_KEY);
+        if (!isMounted) return;
+
+        if (hasSeen === "true") {
+          setShowOnboarding(false);
+          void loadGallery();
+        } else {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        console.warn("Couldn't read onboarding status:", error);
+        if (!isMounted) return;
+        setShowOnboarding(false);
+        void loadGallery();
+      } finally {
+        if (isMounted) {
+          setIsCheckingOnboarding(false);
+        }
+      }
+    }
+
+    void checkFirstLaunch();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadGallery]);
+
+  const finishOnboarding = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(HAS_SEEN_ONBOARDING_KEY, "true");
+    } catch (error) {
+      console.warn("Failed to persist onboarding completion:", error);
+    }
+    setShowOnboarding(false);
+    if (onboardingFromFolders) {
+      setOnboardingFromFolders(false);
+    } else {
+      void loadGallery();
+    }
+  }, [loadGallery, onboardingFromFolders]);
+
 
   const startAlbumReview = useCallback(
     async (album: GalleryAlbum, requestedCount: number) => {
@@ -225,10 +280,6 @@ export default function HomeScreen() {
     [],
   );
 
-  useEffect(() => {
-    void loadGallery();
-  }, [loadGallery]);
-
   useSavedSession({
     sessionReady,
     loading,
@@ -310,7 +361,7 @@ export default function HomeScreen() {
   useEffect(() => {
     translateX.value = 0;
     translateY.value = 0;
-  }, [index, translateX, translateY]);
+  }, [index]);
 
   const pan = Gesture.Pan()
     .activeOffsetX([-12, 12])
@@ -413,7 +464,7 @@ export default function HomeScreen() {
       translateX.value = 0;
       translateY.value = 0;
     },
-    [photos, translateX, translateY],
+    [photos],
   );
 
   const undo = () => {
@@ -490,8 +541,7 @@ export default function HomeScreen() {
 
     Alert.alert(
       "Delete media permanently?",
-      `This will ask Android to delete ${rejectedPhotos.length} selected ${
-        rejectedPhotos.length === 1 ? "item" : "items"
+      `This will ask Android to delete ${rejectedPhotos.length} selected ${rejectedPhotos.length === 1 ? "item" : "items"
       } from your device. This action cannot be undone in SwipeClean.`,
       [
         { text: "Cancel", style: "cancel" },
@@ -555,14 +605,13 @@ export default function HomeScreen() {
                   : undefined;
                 setIndex(
                   nextCurrentIndex ??
-                    Math.min(index, Math.max(remainingPhotos.length - 1, 0)),
+                  Math.min(index, Math.max(remainingPhotos.length - 1, 0)),
                 );
                 setPreviewVisible(false);
                 setPreviewedPhoto(null);
                 Alert.alert(
                   "Deletion complete",
-                  `${rejectedPhotos.length} ${
-                    rejectedPhotos.length === 1 ? "item was" : "items were"
+                  `${rejectedPhotos.length} ${rejectedPhotos.length === 1 ? "item was" : "items were"
                   } deleted.`,
                 );
               } catch (error) {
@@ -581,6 +630,220 @@ export default function HomeScreen() {
     );
   };
 
+  if (isCheckingOnboarding) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: "#17191A",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#17191A" />
+      </SafeAreaView>
+    );
+  }
+
+  if (showOnboarding) {
+    const onboardingSteps = [
+      {
+        eyebrow: "STEP 1 OF 3",
+        title: "Swipe to sort",
+        description:
+          "Swipe right to keep a photo. Swipe left to mark a photo for deletion.",
+        symbol: "↔",
+      },
+      {
+        eyebrow: "STEP 2 OF 3",
+        title: "Review your queue",
+        description:
+          "Rejected photos are collected in your deletion queue. You can review or restore them before deleting anything.",
+        symbol: "☷",
+      },
+      {
+        eyebrow: "STEP 3 OF 3",
+        title: "You stay in control",
+        description:
+          "SwipeClean never deletes photos just because you swipe. Review your selection and confirm before Android is asked to delete them.",
+        symbol: "✓",
+      },
+    ];
+    const step = onboardingSteps[onboardingStep];
+    const isLastStep = onboardingStep === onboardingSteps.length - 1;
+
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: "#17191A",
+          paddingHorizontal: 24,
+          paddingTop: 20,
+          paddingBottom: 24,
+        }}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#17191A" />
+        <View style={{ flex: 1, justifyContent: "space-between" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View>
+              <Text
+                style={{ color: "#F2F0EA", fontSize: 24, fontWeight: "700" }}
+              >
+                SwipeClean
+              </Text>
+              <Text style={{ color: "#A5AAA7", fontSize: 14, marginTop: 3 }}>
+                A little less clutter.
+              </Text>
+            </View>
+            {onboardingFromFolders ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => {
+                  setShowOnboarding(false);
+                  setOnboardingFromFolders(false);
+                }}
+                hitSlop={10}
+              >
+                <Text style={{ color: "#A5AAA7", fontSize: 14, padding: 8 }}>
+                  Close
+                </Text>
+              </TouchableOpacity>
+            ) : !isLastStep ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => setOnboardingStep(onboardingSteps.length - 1)}
+                hitSlop={10}
+              >
+                <Text style={{ color: "#A5AAA7", fontSize: 14, padding: 8 }}>
+                  Skip
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={{ alignItems: "center", paddingHorizontal: 8 }}>
+            <View
+              style={{
+                width: 116,
+                height: 116,
+                borderRadius: 32,
+                backgroundColor: "#252A27",
+                borderWidth: 1,
+                borderColor: "#3B4740",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 34,
+              }}
+            >
+              <Text
+                style={{ color: "#A3BFA8", fontSize: 58, fontWeight: "600" }}
+              >
+                {step.symbol}
+              </Text>
+            </View>
+            <Text
+              style={{
+                color: "#A3BFA8",
+                fontSize: 12,
+                fontWeight: "700",
+                letterSpacing: 2,
+                marginBottom: 14,
+              }}
+            >
+              {step.eyebrow}
+            </Text>
+            <Text
+              style={{
+                color: "#F2F0EA",
+                fontSize: 30,
+                lineHeight: 37,
+                fontWeight: "700",
+                textAlign: "center",
+                marginBottom: 14,
+              }}
+            >
+              {step.title}
+            </Text>
+            <Text
+              style={{
+                color: "#B5B8B5",
+                fontSize: 16,
+                lineHeight: 25,
+                textAlign: "center",
+                maxWidth: 330,
+              }}
+            >
+              {step.description}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 30 }}>
+              {onboardingSteps.map((item, itemIndex) => (
+                <View
+                  key={item.eyebrow}
+                  style={{
+                    width: itemIndex === onboardingStep ? 24 : 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor:
+                      itemIndex === onboardingStep ? "#A3BFA8" : "#454947",
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+
+          <View style={{ gap: 12 }}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => {
+                if (isLastStep) {
+                  void finishOnboarding();
+                } else {
+                  setOnboardingStep((current) => current + 1);
+                }
+              }}
+              style={{
+                minHeight: 56,
+                borderRadius: 16,
+                backgroundColor: "#A3BFA8",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 20,
+              }}
+            >
+              <Text
+                style={{ color: "#17191A", fontSize: 16, fontWeight: "700" }}
+              >
+                {isLastStep
+                  ? onboardingFromFolders
+                    ? "Back to folders"
+                    : "Start cleaning"
+                  : "Continue"}
+              </Text>
+            </TouchableOpacity>
+            <Text
+              style={{
+                color: "#818783",
+                fontSize: 12,
+                lineHeight: 18,
+                textAlign: "center",
+              }}
+            >
+              {onboardingFromFolders
+                ? "Review these tips anytime, then return to your folders."
+                : "Your gallery permission is requested when you tap Start cleaning."}
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="light-content" />
@@ -592,23 +855,14 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            accessibilityLabel="Open deletion queue"
-            style={styles.queueButton}
-            onPress={() => setQueueVisible(true)}
-          >
-            <Text style={styles.queueButtonText}>
-              Queue {rejectedPhotos.length}
-            </Text>
-          </TouchableOpacity>
           <View style={styles.counter}>
             <Text style={styles.counterText}>
               {photos.length === 0
                 ? 0
                 : Math.min(
-                    index + (currentPhoto ? 1 : 0),
-                    totalCount || photos.length,
-                  )}
+                  index + (currentPhoto ? 1 : 0),
+                  totalCount || photos.length,
+                )}
               {" / "}
               {totalCount || photos.length}
             </Text>
@@ -619,6 +873,29 @@ export default function HomeScreen() {
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
+
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`Open deletion queue, ${rejectedPhotos.length} items`}
+        style={styles.queueBanner}
+        onPress={() => setQueueVisible(true)}
+      >
+        <View style={styles.queueBannerLeft}>
+          <Text style={styles.queueBannerIcon}>☷</Text>
+          <View>
+            <Text style={styles.queueBannerTitle}>Deletion queue</Text>
+            <Text style={styles.queueBannerSubtitle}>
+              Review items marked for deletion
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.queueBannerCount}>
+          <Text style={styles.queueBannerCountText}>
+            {rejectedPhotos.length}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
       {!albumPickerVisible && selectedAlbum && !loading && !finished && (
         <View style={styles.albumNavigation}>
@@ -672,6 +949,11 @@ export default function HomeScreen() {
               }
             }}
             onChangePhotoCount={setPhotoCountInput}
+            onHowToUse={() => {
+              setOnboardingStep(0);
+              setOnboardingFromFolders(true);
+              setShowOnboarding(true);
+            }}
             onStartReview={(album, count) => {
               void startAlbumReview(album, count).then(() =>
                 setSessionReady(true),
